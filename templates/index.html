@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="hero" id="search">
+  <div class="hero-grid-bg" aria-hidden="true"></div>
+  <div class="hero-inner">
+    <p class="eyebrow">no admin uploads · no dead ends · just the open web, organized</p>
+    <h1 class="hero-title">Student<span class="hero-title-accent">Hub</span></h1>
+    <p class="hero-sub">Your all-in-one study companion.</p>
+
+    <form class="search-card" action="{{ url_for('search.search_page') }}" method="get">
+      <div class="search-card-tab">search index</div>
+      <div class="search-card-body">
+        <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input
+          type="text"
+          name="q"
+          class="search-input"
+          placeholder="Search any subject, topic, chapter or question..."
+          autocomplete="off"
+          required
+        >
+        <button type="submit" class="search-btn">Search</button>
+      </div>
+    </form>
+
+    <div class="chip-row" aria-label="Example searches">
+      <a class="chip" href="{{ url_for('search.search_page') }}?q=Data+Structures+Heap+Sort">Data Structures Heap Sort</a>
+      <a class="chip" href="{{ url_for('search.search_page') }}?q=Newton%27s+Laws">Newton's Laws</a>
+      <a class="chip" href="{{ url_for('search.search_page') }}?q=DBMS+Normalization">DBMS Normalization</a>
+      <a class="chip" href="{{ url_for('search.search_page') }}?q=Partnership+Accounts">Partnership Accounts</a>
+      <a class="chip" href="{{ url_for('search.search_page') }}?q=French+B2+writing">French B2 writing</a>
+      <a class="chip" href="{{ url_for('search.search_page') }}?q=Python+inheritance">Python inheritance</a>
+    </div>
+  </div>
+</section>
+
+<section class="tools" id="tools">
+  <div class="tools-inner">
+    <div class="section-head">
+      <span class="section-tab">01</span>
+      <h2>Tools students actually reach for</h2>
+    </div>
+    <div class="tool-grid">
+      <a class="tool-card" href="{{ url_for('main.calculators') }}#gpa"><span class="tool-icon">🎓</span><span>GPA Calculator</span></a>
+      <a class="tool-card" href="{{ url_for('main.calculators') }}#cgpa"><span class="tool-icon">📊</span><span>CGPA Calculator</span></a>
+      <a class="tool-card" href="{{ url_for('main.calculators') }}#percentage"><span class="tool-icon">%</span><span>Percentage Calculator</span></a>
+      <a class="tool-card" href="{{ url_for('main.calculators') }}#attendance"><span class="tool-icon">📅</span><span>Attendance Calculator</span></a>
+      <a class="tool-card" href="{{ url_for('main.calculators') }}#age"><span class="tool-icon">🎂</span><span>Age Calculator</span></a>
+      <a class="tool-card" href="{{ url_for('main.calculators') }}#scientific"><span class="tool-icon">🧮</span><span>Scientific Calculator</span></a>
+      <a class="tool-card" href="{{ url_for('main.calculators') }}#converter"><span class="tool-icon">🔁</span><span>Unit Converter</span></a>
+      <a class="tool-card disabled" href="#"><span class="tool-icon">🗓️</span><span>Study Timetable</span><span class="soon">soon</span></a>
+      <a class="tool-card disabled" href="#"><span class="tool-icon">📄</span><span>Resume Builder</span><span class="soon">soon</span></a>
+      <a class="tool-card" href="{{ url_for('main.index') }}#search"><span class="tool-icon">🧠</span><span>AI Study Helper</span></a>
+      <a class="tool-card disabled" href="#"><span class="tool-icon">📑</span><span>PDF Tools</span><span class="soon">soon</span></a>
+      <a class="tool-card disabled" href="#"><span class="tool-icon">💻</span><span>Coding Tools</span><span class="soon">soon</span></a>
+      <a class="tool-card disabled" href="#"><span class="tool-icon">🗂️</span><span>Notes Organizer</span><span class="soon">soon</span></a>
+    </div>
+  </div>
+</section>
+
+<section class="how">
+  <div class="how-inner">
+    <div class="section-head">
+      <span class="section-tab">02</span>
+      <h2>How a search becomes study notes</h2>
+    </div>
+    <ol class="how-steps">
+      <li><span class="step-n">1</span><div><strong>You search</strong><p>Any subject, chapter, or question — no fixed list.</p></div></li>
+      <li><span class="step-n">2</span><div><strong>We search the web</strong><p>Educational sites, PDFs, and videos, ranked for relevance.</p></div></li>
+      <li><span class="step-n">3</span><div><strong>AI organizes it</strong><p>Definitions, steps, examples, and exam points — in your own study format.</p></div></li>
+      <li><span class="step-n">4</span><div><strong>Sources stay attached</strong><p>Every note links back to where it came from. Always.</p></div></li>
+    </ol>
+  </div>
+</section>
+
+{% endblock %}
