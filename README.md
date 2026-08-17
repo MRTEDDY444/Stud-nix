@@ -11,17 +11,39 @@ is structured so real providers drop in by changing `.env` only.
 
 ## What actually works right now
 
-- Homepage with search + example queries
-- `/search?q=...` → calls the search service → generates structured AI
-  study notes → renders notes + cited web/PDF/video resources
-- AI Study Helper buttons (Explain, Simplify, MCQs, Flashcards, Exam
-  notes, Summarize) via `/api/ai-helper`
-- GPA/CGPA, Percentage, Attendance, Age, Unit Converter, and Scientific
-  calculators — all fully functional client-side
+- Homepage with search + example queries ("Ask anything — solve, explain, code, calculate...")
+- **Math/calculation engine** (`services/math_service.py`, powered by sympy): factorials,
+  arithmetic, percentages, linear/quadratic equations, derivatives/integrals, and a couple of
+  common physics formulas (distance = speed × time, F = ma) are computed exactly and directly —
+  these never touch web search, so "Solve 2!" can't accidentally match an unrelated article.
+- Search flow with query classification (`ai_service.classify_query`) and topic-appropriate
+  study notes with cited sources (web/PDF/video) — sections shown depend on the kind of query
+  (algorithm vs. programming vs. science vs. person vs. general question), not one fixed template
+- **Coding Playground** (`/coding`): language selector, editor, Run (Python via a sandboxed
+  subprocess, JavaScript directly in the browser), and AI-assisted Explain/Debug/Improve/Convert
+- AI Study Helper buttons (explain, simplify, MCQs, flashcards, summarize)
+- GPA/CGPA, Percentage, Attendance, Age, Unit Converter, Scientific calculators
+- Mock search/AI providers swappable via `.env` for real API keys
 - Dark/light mode, mobile-first responsive layout
-- SQLite logging of searches (`searches` table); schema for users, notes,
-  and saved resources is defined and ready for Stage 5 (auth)
+- SQLite logging of searches; schema for users, notes, and saved resources is defined and ready
+  for a future auth stage
 - Custom 404/500 pages — no stack traces shown to users
+
+## Honest limitations of the free/keyless path
+
+Without `AI_API_KEY` configured, this is fundamentally Wikipedia + deterministic math — it
+can't write, generate, or reliably debug arbitrary code, and it can't answer truly open-ended
+questions it has no real source for. It says so plainly rather than guessing (see the
+"coding_request"/"debugging" fallback sections in `ai_service.py`).
+
+Set `AI_API_PROVIDER=anthropic` with a real `AI_API_KEY` to enable full code generation,
+debugging, and open-domain answering — that path is already wired through the same dynamic
+section format, so no template changes are needed once you add a key.
+
+The Coding Playground's Python sandbox (`services/code_execution_service.py`) is a best-effort
+local sandbox (AST allowlist + OS-level resource limits + timeout), not real container/VM
+isolation. Fine for a small/personal deployment; swap in a real sandbox (Docker, gVisor,
+Judge0, Piston) before taking untrusted public traffic at scale.
 
 ## Running it
 

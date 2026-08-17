@@ -15,9 +15,18 @@ def search_page():
     if not query:
         return render_template("search.html", query="", results=None, notes=None, error=None)
 
-    results = search_service.search(query)
+    # Calculations are answered directly and never touch web search — this
+    # is what stops "Solve 2!" from accidentally matching an unrelated
+    # "Problem solving" article and showing its definition instead of 2.
+    notes = ai_service.try_direct_answer(query)
+    if notes:
+        results = {"query": query, "web": [], "pdfs": [], "videos": [],
+                   "provider": "calculator", "error": None}
+        log_search(query, "calculator")
+        return render_template("search.html", query=query, results=results,
+                                notes=notes, error=None)
 
-    # Log the search (best-effort; never break the page if this fails)
+    results = search_service.search(query)
     log_search(query, results.get("provider", "mock"))
 
     notes = None

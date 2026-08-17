@@ -16,6 +16,7 @@ that path is used automatically once set, with the same section shape.
 import re
 import requests
 from config.config import Config
+from services.math_service import solve_math
 
 _FORMULA_PATTERN = re.compile(
     r"\b([A-Za-z][A-Za-z0-9]{0,3})\s*=\s*([A-Za-z0-9πΔ\+\-\*/\^√\.]{1,20})\b"
@@ -30,6 +31,18 @@ _PERCENT_OF_PATTERN = re.compile(
 # Generalizes to any query, not just the ones used for testing.
 # ----------------------------------------------------------------------
 _CATEGORY_KEYWORDS = {
+    "debugging": (
+        "debug", "why is my code", "why is this code", "fix this code", "fix my code",
+        "error in my code", "indexerror", "syntaxerror", "typeerror", "nameerror",
+        "valueerror", "keyerror", "attributeerror", "runtime error", "traceback",
+        "what does this error mean", "giving an error", "throwing an error",
+    ),
+    "coding_request": (
+        "write a program", "write code", "write a function", "write a python",
+        "write a java", "write a c program", "write a c++ program", "generate code",
+        "code to ", "program to ", "convert this code", "optimize this code",
+        "improve this code", "explain this code", "explain the code",
+    ),
     "algorithm": (
         "algorithm", "sort", "search tree", "binary search", "heap", "stack",
         "queue", "linked list", "graph traversal", "dynamic programming",
@@ -52,9 +65,6 @@ _CATEGORY_KEYWORDS = {
         "algebra", "geometry", "trigonometry", "probability", "statistics",
         "equation", "theorem", "derivative",
     ),
-    "calculation": (
-        "% of", "percent of", "how many days", "how much is", "calculate",
-    ),
     "gaming": (
         "game", "gaming", "fps", "sensitivity", "minecraft", "free fire",
         "pubg", "valorant", "fortnite", "graphics settings", "gameplay",
@@ -69,10 +79,13 @@ def classify_query(query: str) -> str:
     q = query.lower().strip()
     if re.match(r"^(who is|who was|who are)\b", q):
         return "person"
-    if _PERCENT_OF_PATTERN.search(q) or "how many days" in q:
+    if solve_math(query) is not None:
         return "calculation"
-    # Check more specific categories before generic ones.
-    for category in ("algorithm", "programming", "science", "math", "gaming", "howto"):
+    # Check more specific categories before generic ones — debugging/coding
+    # before "programming" so "debug this Python code" isn't just filed as
+    # a generic Python explanation.
+    for category in ("debugging", "coding_request", "algorithm", "programming",
+                      "science", "math", "gaming", "howto"):
         for kw in _CATEGORY_KEYWORDS[category]:
             if kw in q:
                 return category
@@ -130,21 +143,28 @@ class AIService:
         return found[:4]
 
     @staticmethod
-    def _try_calculate(query: str):
-        """Exact, deterministic answers for arithmetic-shaped queries —
-        no source needed because it's just math, and it generalizes to
-        any numbers, not only a specific tested example."""
-        m = _PERCENT_OF_PATTERN.search(query)
-        if m:
-            pct = float(m.group(1))
-            base = float(m.group(2).replace(",", ""))
-            result = (pct / 100) * base
-            result_str = f"{result:g}"
-            return {
-                "answer": f"{pct:g}% of {base:g} is {result_str}.",
-                "working": f"{pct:g}% of {base:g} = ({pct:g} / 100) × {base:g} = {result_str}.",
-            }
-        return None
+    def _calc_sections(calc: dict):
+        sections = [{"label": "Given", "kind": "paragraph", "content": calc["given"]}]
+        if calc.get("formula"):
+            sections.append({"label": "Formula", "kind": "paragraph", "content": calc["formula"]})
+        sections.append({"label": "Calculation", "kind": "paragraph", "content": calc["calculation"]})
+        sections.append({"label": "Final Answer", "kind": "paragraph", "content": calc["answer"]})
+        return sections
+
+    def try_direct_answer(self, query: str):
+        """Answers a query directly with no web search at all — currently
+        covers math/calculation. Returns a full notes dict, or None if
+        this query needs the normal search-and-classify path instead.
+        Called by the route BEFORE SearchService runs, so a calculation
+        never gets accidentally matched against an unrelated article."""
+        calc = solve_math(query)
+        if not calc:
+            return None
+        return {
+            "header_icon": "🧮", "header_label": "AI Answer", "category": "calculation",
+            "sections": self._calc_sections(calc),
+            "note": "Calculated directly — no external source needed for this one.",
+        }
 
     # ------------------------------------------------------------------
     # Section builders — one per category. Each returns a list of
@@ -155,18 +175,13 @@ class AIService:
         category = classify_query(query)
 
         if category == "calculation":
-            calc = self._try_calculate(query)
+            calc = solve_math(query)
             if calc:
                 return {
                     "header_icon": "🧮", "header_label": "AI Answer", "category": category,
-                    "sections": [
-                        {"label": "Answer", "kind": "paragraph", "content": calc["answer"]},
-                        {"label": "Working", "kind": "paragraph", "content": calc["working"]},
-                    ],
+                    "sections": self._calc_sections(calc),
                     "note": "Calculated directly — no external source needed for this one.",
                 }
-            # Not a pattern we can compute directly (e.g. "how many days in a
-            # leap year") — fall through to a normal source-grounded lookup.
             category = "general"
 
         extract = search_context.get("extract", "") or ""
@@ -181,13 +196,19 @@ class AIService:
         elif category == "programming":
             sections = self._programming_sections(topic, sentences, has_source)
             header_icon, header_label = "📖", "AI Study Notes"
+        elif category == "coding_request":
+            sections = self._coding_request_sections(query, topic, sentences, has_source)
+            header_icon, header_label = "💻", "AI Coding Help"
+        elif category == "debugging":
+            sections = self._debugging_sections(query, topic, sentences, has_source)
+            header_icon, header_label = "🐛", "AI Debug Help"
         elif category in ("science", "math"):
             sections = self._science_sections(topic, extract, sentences, has_source)
             header_icon, header_label = "📖", "AI Study Notes"
         elif category == "person":
             sections = self._person_sections(topic, sentences, has_source)
             header_icon, header_label = "💡", "AI Explanation"
-        else:  # gaming, howto, general — and the calculation fallback above
+        else:  # gaming, howto, general
             sections = self._general_sections(query, topic, sentences, has_source, match_quality)
             header_icon, header_label = "💡", "AI Explanation"
 
@@ -289,6 +310,41 @@ class AIService:
         ]})
         return sections
 
+    def _coding_request_sections(self, query, topic, sentences, has_source):
+        sections = [{
+            "label": "Answer", "kind": "paragraph",
+            "content": ("Generating correct, working code for a new request needs a real AI model. "
+                        "This install is running without one configured (AI_API_PROVIDER=anthropic "
+                        "with AI_API_KEY set enables it) — so here's what's available without it:"),
+        }]
+        if has_source:
+            sections.append({"label": "Background", "kind": "paragraph",
+                              "content": " ".join(sentences[:2])})
+        sections.append({"label": "What you can do", "kind": "list", "content": [
+            "Open the Coding Playground to write and run your own code.",
+            "Configure AI_API_KEY for full code generation, debugging, and code conversion.",
+            "See the linked sources below for reference implementations.",
+        ]})
+        return sections
+
+    def _debugging_sections(self, query, topic, sentences, has_source):
+        sections = [{
+            "label": "Problem", "kind": "paragraph",
+            "content": ("Diagnosing an actual error needs to see your code and the exact error "
+                        "message, and reliably suggesting a fix needs a real AI model. This install "
+                        "is running without one configured — set AI_API_KEY with "
+                        "AI_API_PROVIDER=anthropic to enable full debugging support."),
+        }]
+        sections.append({"label": "In the meantime", "kind": "list", "content": [
+            "Paste the full error traceback — the last line usually names the exact error type.",
+            "Check the line number in the traceback first; that's almost always where the problem is.",
+            "Try the Coding Playground to isolate and re-run just the failing part.",
+        ]})
+        if has_source:
+            sections.append({"label": "Background", "kind": "paragraph",
+                              "content": " ".join(sentences[:2])})
+        return sections
+
     def _person_sections(self, topic, sentences, has_source):
         if not has_source:
             return self._no_source_sections(topic)
@@ -359,6 +415,76 @@ class AIService:
         return {"action": action, "topic": topic,
                 "result": responses.get(action, " ".join(sentences[:3]))}
 
+    def code_assist(self, action: str, code: str, language: str = "python") -> dict:
+        """Powers the Coding Playground's Explain / Debug / Improve /
+        Convert buttons. Without a real AI key this can't reliably
+        generate or rewrite code — it says so plainly rather than
+        guessing — but syntax errors ARE checked for real via the same
+        AST parser the sandbox itself uses, since that's just parsing,
+        not generation."""
+        try:
+            if self.provider == "anthropic" and self.api_key:
+                result = self._anthropic_code_assist(action, code, language)
+                if result:
+                    return result
+            return self._fallback_code_assist(action, code, language)
+        except requests.RequestException:
+            return {"error": "AI Study Helper is temporarily unavailable. "
+                              "You can still run your code above."}
+
+    def _fallback_code_assist(self, action: str, code: str, language: str) -> dict:
+        labels = {
+            "explain_code": "Explaining code",
+            "debug_code": "Debugging code",
+            "improve_code": "Improving code",
+            "convert_code": "Converting code",
+        }
+        note = (f"{labels.get(action, 'This')} reliably for arbitrary code needs a real AI "
+                f"model — set AI_API_KEY with AI_API_PROVIDER=anthropic to enable it.")
+        if action == "debug_code" and language == "python":
+            import ast as _ast
+            try:
+                _ast.parse(code)
+                syntax_note = "No syntax errors found by Python's own parser — if it's still " \
+                               "failing, the problem is likely a runtime issue (check the " \
+                               "Output panel after running it)."
+            except SyntaxError as e:
+                syntax_note = f"Syntax error found: {e.msg} (line {e.lineno})."
+            return {"action": action, "result": f"{syntax_note}\n\n{note}"}
+        return {"action": action, "result": note}
+
+    def _anthropic_code_assist(self, action: str, code: str, language: str):
+        instructions = {
+            "explain_code": "Explain what this code does, ideally line by line for the non-obvious parts.",
+            "debug_code": "Find the bug or likely cause of an error in this code, and provide corrected code.",
+            "improve_code": "Suggest concrete improvements to this code and provide an improved version.",
+            "convert_code": f"Convert this {language} code to an equivalent in another common "
+                             f"language, and say clearly which language you chose.",
+        }
+        prompt = (
+            f"{instructions.get(action, 'Help with this code.')}\n\nLanguage: {language}\n\n"
+            f"Code:\n```{language}\n{code}\n```\n\nRespond in plain text, including any corrected "
+            f"or new code in a fenced code block."
+        )
+        resp = requests.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={
+                "x-api-key": self.api_key,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json",
+            },
+            json={"model": "claude-sonnet-4-6", "max_tokens": 1200,
+                  "messages": [{"role": "user", "content": prompt}]},
+            timeout=25,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        text_blocks = [b.get("text", "") for b in data.get("content", []) if b.get("type") == "text"]
+        text = "\n".join(text_blocks).strip()
+        if not text:
+            return None
+        return {"action": action, "result": text}
+
     # ------------------------------------------------------------------
     # REAL PROVIDER (Anthropic) — requires AI_API_KEY in .env. Answers any
     # query using the model's own knowledge, optionally grounded by
@@ -371,17 +497,23 @@ class AIService:
             "No verified source text was retrieved for this query — answer from your own knowledge, " \
             "and say plainly in the notes that this isn't tied to a specific verified source."
         prompt = (
-            f"You are an educational assistant powering a study-notes site. A user searched: "
-            f"'{query}'. First classify the query as one of: algorithm, programming, science, math, "
-            f"person, gaming, howto, calculation, general. Then produce a response whose SECTIONS "
-            f"are appropriate to that category — do not force unrelated categories (e.g. a person or "
-            f"gaming query) into an 'Algorithm / Steps' structure.\n\n{sources_text}\n\n"
+            f"You are an AI assistant powering a student site that solves problems, writes code, "
+            f"debugs code, and explains topics — like ChatGPT/Claude, not a topic-lookup tool. A "
+            f"user asked: '{query}'. First classify the query as one of: calculation, algorithm, "
+            f"programming, coding_request, debugging, science, math, person, gaming, howto, general. "
+            f"Then produce a response whose SECTIONS are appropriate to that category — do not force "
+            f"unrelated categories into an unrelated structure. If the query asks to solve, compute, "
+            f"or calculate something, actually perform the calculation and show the result — don't "
+            f"describe what calculation/problem-solving is in the abstract. If it's a coding_request, "
+            f"actually write the code (in a 'code' kind section) and explain it. If it's debugging, "
+            f"explain the likely cause and give corrected code.\n\n{sources_text}\n\n"
             f"Return ONLY valid JSON (no markdown fences) with this shape: "
             f'{{"header_icon": "<one emoji>", "header_label": "AI Study Notes" or "AI Explanation" or '
-            f'"AI Answer", "category": "<category>", "sections": [{{"label": "<section name>", '
-            f'"kind": "paragraph" or "list" or "ordered" or "code_list", "content": "<string for '
-            f'paragraph, array of strings otherwise>"}}], "note": "<one sentence on where this content '
-            f'came from>"}}. Include only sections that genuinely make sense for this specific query.'
+            f'"AI Answer" or "AI Coding Help" or "AI Debug Help", "category": "<category>", '
+            f'"sections": [{{"label": "<section name>", "kind": "paragraph" or "list" or "ordered" or '
+            f'"code" or "code_list", "content": "<string for paragraph/code, array of strings '
+            f'otherwise>"}}], "note": "<one sentence on where this content came from>"}}. Include only '
+            f"sections that genuinely make sense for this specific query."
         )
         resp = requests.post(
             "https://api.anthropic.com/v1/messages",

@@ -4,19 +4,19 @@
 <section class="hero" id="search">
   <div class="hero-grid-bg" aria-hidden="true"></div>
   <div class="hero-inner">
-    <p class="eyebrow">no admin uploads · no dead ends · just the open web, organized</p>
+    <p class="eyebrow">solve · explain · code · calculate — ask anything, get real sources</p>
     <h1 class="hero-title">Student<span class="hero-title-accent">Hub</span></h1>
     <p class="hero-sub">Your all-in-one study companion.</p>
 
     <form class="search-card" action="{{ url_for('search.search_page') }}" method="get">
-      <div class="search-card-tab">search index</div>
+      <div class="search-card-tab">ask anything</div>
       <div class="search-card-body">
         <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
         <input
           type="text"
           name="q"
           class="search-input"
-          placeholder="Search any subject, topic, chapter or question..."
+          placeholder="Ask anything — solve, explain, code, calculate..."
           autocomplete="off"
           required
         >
@@ -25,12 +25,12 @@
     </form>
 
     <div class="chip-row" aria-label="Example searches">
-      <a class="chip" href="{{ url_for('search.search_page') }}?q=Data+Structures+Heap+Sort">Data Structures Heap Sort</a>
-      <a class="chip" href="{{ url_for('search.search_page') }}?q=Newton%27s+Laws">Newton's Laws</a>
-      <a class="chip" href="{{ url_for('search.search_page') }}?q=DBMS+Normalization">DBMS Normalization</a>
-      <a class="chip" href="{{ url_for('search.search_page') }}?q=Partnership+Accounts">Partnership Accounts</a>
-      <a class="chip" href="{{ url_for('search.search_page') }}?q=French+B2+writing">French B2 writing</a>
-      <a class="chip" href="{{ url_for('search.search_page') }}?q=Python+inheritance">Python inheritance</a>
+      <a class="chip" href="{{ url_for('search.search_page') }}?q=Solve+2x+%2B+5+%3D+15">Solve 2x + 5 = 15</a>
+      <a class="chip" href="{{ url_for('search.search_page') }}?q=Explain+Python+inheritance">Explain Python inheritance</a>
+      <a class="chip" href="{{ url_for('search.search_page') }}?q=Calculate+15%25+of+2500">Calculate 15% of 2500</a>
+      <a class="chip" href="{{ url_for('search.search_page') }}?q=What+is+Newton%27s+First+Law%3F">What is Newton's First Law?</a>
+      <a class="chip" href="{{ url_for('search.search_page') }}?q=What+is+K+in+Free+Fire%3F">What is K in Free Fire?</a>
+      <a class="chip" href="{{ url_for('search.search_page') }}?q=Find+the+derivative+of+x%C2%B3+%2B+2x">Find the derivative of x³ + 2x</a>
     </div>
   </div>
 </section>
@@ -53,7 +53,7 @@
       <a class="tool-card disabled" href="#"><span class="tool-icon">📄</span><span>Resume Builder</span><span class="soon">soon</span></a>
       <a class="tool-card" href="{{ url_for('main.index') }}#search"><span class="tool-icon">🧠</span><span>AI Study Helper</span></a>
       <a class="tool-card disabled" href="#"><span class="tool-icon">📑</span><span>PDF Tools</span><span class="soon">soon</span></a>
-      <a class="tool-card disabled" href="#"><span class="tool-icon">💻</span><span>Coding Tools</span><span class="soon">soon</span></a>
+      <a class="tool-card" href="{{ url_for('coding.coding_page') }}"><span class="tool-icon">💻</span><span>Coding Playground</span></a>
       <a class="tool-card disabled" href="#"><span class="tool-icon">🗂️</span><span>Notes Organizer</span><span class="soon">soon</span></a>
     </div>
   </div>

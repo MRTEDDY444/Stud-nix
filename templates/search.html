@@ -6,7 +6,7 @@
   <form class="search-card compact" action="{{ url_for('search.search_page') }}" method="get">
     <div class="search-card-body">
       <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-      <input type="text" name="q" class="search-input" value="{{ query }}" placeholder="Search any subject, topic, chapter or question..." autocomplete="off" required>
+      <input type="text" name="q" class="search-input" value="{{ query }}" placeholder="Ask anything — solve, explain, code, calculate..." autocomplete="off" required>
       <button type="submit" class="search-btn">Search</button>
     </div>
   </form>
@@ -45,6 +45,8 @@
           <ol>{% for item in section.content %}<li>{{ item }}</li>{% endfor %}</ol>
         {% elif section.kind == "code_list" %}
           <ul>{% for item in section.content %}<li><code>{{ item }}</code></li>{% endfor %}</ul>
+        {% elif section.kind == "code" %}
+          <pre class="code-block"><code>{{ section.content }}</code></pre>
         {% endif %}
       </div>
       {% endfor %}
